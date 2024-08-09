@@ -43,6 +43,10 @@ static double Infinity = std::numeric_limits<double>::infinity();
 constexpr auto fseek_64_all_platforms = fseeko64;
 #elif defined(WIN32)
 constexpr auto fseek_64_all_platforms = _fseeki64;
+#elif defined(__APPLE__) || defined(__MACH__)
+constexpr auto fseek_64_all_platforms = fseeko;
+#else
+#error "fseek_64: unsupported platform"
 #endif
 
 

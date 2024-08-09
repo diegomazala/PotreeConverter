@@ -17,26 +17,42 @@ Altough the converter made a major step to version 2.0, the format it produces i
 * [Potree: Rendering Large Point Clouds in Web Browsers](https://www.cg.tuwien.ac.at/research/publications/2016/SCHUETZ-2016-POT/SCHUETZ-2016-POT-thesis.pdf)
 * [Fast Out-of-Core Octree Generation for Massive Point Clouds](https://www.cg.tuwien.ac.at/research/publications/2020/SCHUETZ-2020-MPC/), _Schütz M., Ohrhallinger S., Wimmer M._
 
-# Getting Started
 
-1. Download windows binaries or
-    * Download source code
-	* Install [CMake](https://cmake.org/) 3.16 or later
-	* Create and jump into folder "build"
-	    ```
-	    mkdir build
-	    cd build
-	    ```
-	* run 
-	    ```
-	    cmake ../
-	    ```
-	* On linux, run: ```make```
-	* On windows, open Visual Studio 2019 Project ./Converter/Converter.sln and compile it in release mode
-2. run ```PotreeConverter.exe <input> -o <outputDir>```
+
+# Getting Started
+## Binaries
+   * Download binaries on [release page](https://github.com/potree/PotreeConverter/releases)
+
+## Build from source
+### Requirements
+* CMake 3.16 or later
+  * C++17 compiler
+    * **[Linux]** GCC 9 or later
+    * **[Mac]** GCC 9 or later (clang is not supported)
+    * **[Windows]** Visual Studio 2019 or later
+
+### Build
+* `git clone https://github.com/potree/PotreeConverter.git PotreeConverter`
+  * `cd PotreeConverter`
+  * `mkdir build`
+  * `cd build`
+    #### Linux
+      * `cmake ../`
+      * `make`
+    #### Windows
+      * `cmake ../`
+      * Open Visual Studio 2019 Project ./Converter/Converter.sln and compile it in release mode
+    #### MacOS
+      * `cmake ../ -DCMAKE_C_COMPILER=/opt/homebrew/bin/gcc-14 -DCMAKE_CXX_COMPILER=/opt/homebrew/bin/g++-14`
+      * `make`
+
+# Testing conversion
+    * run ```PotreeConverter.exe <input> -o <outputDir>```
     * Optionally specify the sampling strategy:
 	* Poisson-disk sampling (default): ```PotreeConverter.exe <input> -o <outputDir> -m poisson```
 	* Random sampling: ```PotreeConverter.exe <input> -o <outputDir> -m random```
+
+# Visualizing the result
 
 In Potree, modify one of the examples with following load command:
 

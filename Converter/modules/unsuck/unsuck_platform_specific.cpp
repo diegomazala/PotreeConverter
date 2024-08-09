@@ -356,5 +356,110 @@ CpuData getCpuData() {
 	return data;
 }
 
+#elif defined(__APPLE__) && defined(__MACH__)
+
+#include <mach/mach.h>
+#include <sys/sysctl.h>
+#include <unistd.h>
+
+MemoryData getMemoryData() {
+  MemoryData data;
+
+  // Get physical memory
+  int64_t totalPhysMem = 0;
+  int mib[2] = {CTL_HW, HW_MEMSIZE};
+  size_t length = sizeof(totalPhysMem);
+  sysctl(mib, 2, &totalPhysMem, &length, NULL, 0);
+
+  mach_port_t mach_port = mach_host_self();
+  mach_msg_type_number_t count = HOST_VM_INFO_COUNT;
+  vm_statistics_data_t vm_stat;
+  if (host_statistics(mach_port, HOST_VM_INFO, (host_info_t)&vm_stat, &count) == KERN_SUCCESS) {
+    int64_t usedMem = (vm_stat.active_count + vm_stat.inactive_count + vm_stat.wire_count) * sysconf(_SC_PAGESIZE);
+    int64_t freeMem = vm_stat.free_count * sysconf(_SC_PAGESIZE);
+
+    data.physical_total = totalPhysMem;
+    data.physical_used = usedMem;
+    data.virtual_total = totalPhysMem;  // macOS does not have separate virtual memory limits
+    data.virtual_used = usedMem;        // We treat all physical as virtual memory on macOS
+
+    static int64_t virtualUsedMax = 0;
+    static int64_t physicalUsedMax = 0;
+
+    virtualUsedMax = std::max(usedMem, virtualUsedMax);
+    physicalUsedMax = std::max(usedMem, physicalUsedMax);
+
+    data.virtual_usedByProcess = usedMem;
+    data.virtual_usedByProcess_max = virtualUsedMax;
+    data.physical_usedByProcess = usedMem;
+    data.physical_usedByProcess_max = physicalUsedMax;
+  }
+
+  return data;
+}
+
+void printMemoryReport() {
+  auto memoryData = getMemoryData();
+  double vm = double(memoryData.virtual_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
+  double pm = double(memoryData.physical_usedByProcess) / (1024.0 * 1024.0 * 1024.0);
+
+  stringstream ss;
+  ss << "memory usage: "
+     << "virtual: " << formatNumber(vm, 1) << " GB, "
+     << "physical: " << formatNumber(pm, 1) << " GB"
+     << endl;
+
+  cout << ss.str();
+}
+
+void launchMemoryChecker(int64_t maxMB, double checkInterval) {
+  auto interval = std::chrono::milliseconds(int64_t(checkInterval * 1000));
+
+  thread t([maxMB, interval]() {
+    static double lastReport = 0.0;
+    static double reportInterval = 1.0;
+    static double lastUsage = 0.0;
+    static double largestUsage = 0.0;
+
+    while (true) {
+      auto memdata = getMemoryData();
+
+      using namespace std::chrono_literals;
+      std::this_thread::sleep_for(interval);
+    }
+  });
+  t.detach();
+}
+
+static int numProcessors;
+static bool initialized = false;
+
+void init() {
+  numProcessors = std::thread::hardware_concurrency();
+  initialized = true;
+}
+
+CpuData getCpuData() {
+  if (!initialized) {
+    init();
+  }
+
+  CpuData data;
+  data.numProcessors = numProcessors;
+
+  // Get CPU usage
+  host_cpu_load_info_data_t cpuInfo;
+  mach_msg_type_number_t count = HOST_CPU_LOAD_INFO_COUNT;
+  if (host_statistics(mach_host_self(), HOST_CPU_LOAD_INFO, (host_info_t)&cpuInfo, &count) == KERN_SUCCESS) {
+    unsigned long long totalTicks = 0;
+    for (int i = 0; i < CPU_STATE_MAX; i++) totalTicks += cpuInfo.cpu_ticks[i];
+    unsigned long long idleTicks = cpuInfo.cpu_ticks[CPU_STATE_IDLE];
+    data.usage = (1.0 - (idleTicks / (float)totalTicks)) * 100.0;
+  } else {
+    data.usage = -1.0;  // Error
+  }
+
+  return data;
+}
 
 #endif
